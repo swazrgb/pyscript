@@ -106,12 +106,31 @@ class State:
         return notify_vars
 
     @classmethod
-    async def set(cls, var_name, value, new_attributes=None, **kwargs):
+    async def set_attr(cls, var_attr_name, value):
+        """Set a state variable's attribute in hass."""
+        parts = var_attr_name.split(".")
+        if len(parts) != 3:
+            raise NameError(f"invalid name {var_attr_name} (should be 'domain.entity.attr')")
+
+        state_var_name = f"{parts[0]}.{parts[1]}"
+        attr_name = parts[2]
+
+        await cls.set(state_var_name, **{attr_name: value})
+
+    @classmethod
+    async def set(cls, var_name, value=None, new_attributes=None, **kwargs):
         """Set a state variable and optional attributes in hass."""
         if var_name.count(".") != 1:
             raise NameError(f"invalid name {var_name} (should be 'domain.entity')")
-        if new_attributes is None:
+
+        state_value = None
+        if value is None or new_attributes is None:
             state_value = cls.hass.states.get(var_name)
+
+        if value is None and state_value:
+            value = state_value.state
+
+        if new_attributes is None:
             if state_value:
                 new_attributes = state_value.attributes
             else:
